@@ -396,6 +396,101 @@ function createMCPServer(): Server {
             required: ['text'],
           },
         },
+        {
+          name: 'keyboard_press',
+          description: 'Press a key or key combination. Use for Enter, Tab, Escape, arrows, or shortcuts like Ctrl+A, Ctrl+C, Ctrl+V.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+              key: {
+                type: 'string',
+                description: 'Key to press: Enter, Tab, Escape, Backspace, Delete, ArrowUp/Down/Left/Right, Home, End, PageUp, PageDown, Space, or single char (a-z)',
+              },
+              modifiers: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Modifier keys: ctrl, alt, shift, meta/cmd',
+              },
+            },
+            required: ['key'],
+          },
+        },
+        {
+          name: 'scroll',
+          description: 'Scroll the page using mouse wheel. Use deltaY negative to scroll down, positive to scroll up.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+              x: {
+                type: 'number',
+                description: 'X coordinate for scroll position (default: 0)',
+              },
+              y: {
+                type: 'number',
+                description: 'Y coordinate for scroll position (default: 0)',
+              },
+              deltaX: {
+                type: 'number',
+                description: 'Horizontal scroll amount (positive=right)',
+              },
+              deltaY: {
+                type: 'number',
+                description: 'Vertical scroll amount (negative=down, positive=up)',
+              },
+            },
+            required: [],
+          },
+        },
+        {
+          name: 'go_back',
+          description: 'Navigate back in browser history.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+            },
+            required: [],
+          },
+        },
+        {
+          name: 'go_forward',
+          description: 'Navigate forward in browser history.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+            },
+            required: [],
+          },
+        },
+        {
+          name: 'refresh',
+          description: 'Refresh the current page.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+            },
+            required: [],
+          },
+        },
       ],
     };
   });
@@ -578,6 +673,66 @@ function createMCPServer(): Server {
 
         case 'keyboard_type': {
           const result = await sendToExtension('keyboard_type', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'keyboard_press': {
+          const result = await sendToExtension('keyboard_press', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'scroll': {
+          const result = await sendToExtension('scroll', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'go_back': {
+          const result = await sendToExtension('go_back', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'go_forward': {
+          const result = await sendToExtension('go_forward', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'refresh': {
+          const result = await sendToExtension('refresh', args);
           return {
             content: [
               {

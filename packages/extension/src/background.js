@@ -601,6 +601,131 @@ async function handleMessage(message) {
         }
       }
 
+      case 'keyboard_press': {
+        const { tabId, key, modifiers = [] } = payload || {};
+        if (!key) {
+          throw new Error('key is required');
+        }
+        const tab = await getTargetTab(tabId);
+
+        // Map common key names to CDP key codes
+        const keyMap = {
+          'Enter': { key: 'Enter', code: 'Enter', keyCode: 13 },
+          'Tab': { key: 'Tab', code: 'Tab', keyCode: 9 },
+          'Escape': { key: 'Escape', code: 'Escape', keyCode: 27 },
+          'Backspace': { key: 'Backspace', code: 'Backspace', keyCode: 8 },
+          'Delete': { key: 'Delete', code: 'Delete', keyCode: 46 },
+          'ArrowUp': { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 },
+          'ArrowDown': { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 },
+          'ArrowLeft': { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37 },
+          'ArrowRight': { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
+          'Home': { key: 'Home', code: 'Home', keyCode: 36 },
+          'End': { key: 'End', code: 'End', keyCode: 35 },
+          'PageUp': { key: 'PageUp', code: 'PageUp', keyCode: 33 },
+          'PageDown': { key: 'PageDown', code: 'PageDown', keyCode: 34 },
+          'Space': { key: ' ', code: 'Space', keyCode: 32 },
+        };
+
+        // Handle single character keys (a-z, 0-9, etc.)
+        const keyInfo = keyMap[key] || {
+          key: key.length === 1 ? key : key,
+          code: key.length === 1 ? `Key${key.toUpperCase()}` : key,
+          keyCode: key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0
+        };
+
+        // Build modifier flags
+        let modifierFlags = 0;
+        if (modifiers.includes('alt')) modifierFlags |= 1;
+        if (modifiers.includes('ctrl')) modifierFlags |= 2;
+        if (modifiers.includes('meta') || modifiers.includes('cmd')) modifierFlags |= 4;
+        if (modifiers.includes('shift')) modifierFlags |= 8;
+
+        await chrome.debugger.attach({ tabId: tab.id }, '1.3');
+
+        try {
+          await chrome.debugger.sendCommand({ tabId: tab.id }, 'Input.dispatchKeyEvent', {
+            type: 'keyDown',
+            key: keyInfo.key,
+            code: keyInfo.code,
+            windowsVirtualKeyCode: keyInfo.keyCode,
+            modifiers: modifierFlags,
+          });
+          await chrome.debugger.sendCommand({ tabId: tab.id }, 'Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key: keyInfo.key,
+            code: keyInfo.code,
+            windowsVirtualKeyCode: keyInfo.keyCode,
+            modifiers: modifierFlags,
+          });
+
+          return {
+            id,
+            success: true,
+            data: { pressed: true, key, modifiers, method: 'debugger' },
+          };
+        } finally {
+          await chrome.debugger.detach({ tabId: tab.id }).catch(() => {});
+        }
+      }
+
+      case 'scroll': {
+        const { tabId, x = 0, y = 0, deltaX = 0, deltaY = 0 } = payload || {};
+        const tab = await getTargetTab(tabId);
+
+        await chrome.debugger.attach({ tabId: tab.id }, '1.3');
+
+        try {
+          await chrome.debugger.sendCommand({ tabId: tab.id }, 'Input.dispatchMouseEvent', {
+            type: 'mouseWheel',
+            x,
+            y,
+            deltaX,
+            deltaY,
+          });
+
+          return {
+            id,
+            success: true,
+            data: { scrolled: true, x, y, deltaX, deltaY, method: 'debugger' },
+          };
+        } finally {
+          await chrome.debugger.detach({ tabId: tab.id }).catch(() => {});
+        }
+      }
+
+      case 'go_back': {
+        const { tabId } = payload || {};
+        const tab = await getTargetTab(tabId);
+        await chrome.tabs.goBack(tab.id);
+        return {
+          id,
+          success: true,
+          data: { navigated: 'back', tabId: tab.id },
+        };
+      }
+
+      case 'go_forward': {
+        const { tabId } = payload || {};
+        const tab = await getTargetTab(tabId);
+        await chrome.tabs.goForward(tab.id);
+        return {
+          id,
+          success: true,
+          data: { navigated: 'forward', tabId: tab.id },
+        };
+      }
+
+      case 'refresh': {
+        const { tabId } = payload || {};
+        const tab = await getTargetTab(tabId);
+        await chrome.tabs.reload(tab.id);
+        return {
+          id,
+          success: true,
+          data: { refreshed: true, tabId: tab.id },
+        };
+      }
+
       default:
         return {
           id,
