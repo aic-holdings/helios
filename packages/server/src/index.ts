@@ -206,7 +206,7 @@ function createMCPServer(): Server {
         },
         {
           name: 'read_page',
-          description: 'Get structured representation of the page DOM. Returns elements with refs for interaction. Much more token-efficient than screenshots.',
+          description: 'PREFERRED: Get structured DOM representation. Returns interactive elements with refs. Uses ~200-500 tokens vs ~1500 for screenshots. Use this FIRST to understand page structure before taking actions. Only use screenshot if you need to verify visual layout.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -227,8 +227,30 @@ function createMCPServer(): Server {
           },
         },
         {
+          name: 'navigate_and_read',
+          description: 'EFFICIENT: Navigate to URL and immediately read page structure in one call. Saves a round-trip vs navigate + read_page separately.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: {
+                type: 'string',
+                description: 'The URL to navigate to',
+              },
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+              waitMs: {
+                type: 'number',
+                description: 'Milliseconds to wait after navigation (default: 1000)',
+              },
+            },
+            required: ['url'],
+          },
+        },
+        {
           name: 'screenshot',
-          description: 'Capture a screenshot of the visible area. Use sparingly - prefer read_page for most interactions.',
+          description: 'EXPENSIVE (~1500 tokens): Capture visible area as image. Only use when you MUST verify visual layout, colors, or positioning. For finding/clicking elements, use read_page instead (70% cheaper). Ask yourself: "Do I need pixels or just structure?"',
           inputSchema: {
             type: 'object',
             properties: {
@@ -238,12 +260,12 @@ function createMCPServer(): Server {
               },
               format: {
                 type: 'string',
-                enum: ['png', 'jpeg'],
-                description: 'Image format (default: png)',
+                enum: ['jpeg', 'png'],
+                description: 'Image format (default: jpeg - smaller/cheaper)',
               },
               quality: {
                 type: 'number',
-                description: 'JPEG quality 0-100 (default: 80)',
+                description: 'JPEG quality 0-100 (default: 60 for efficiency)',
               },
             },
             required: [],
@@ -376,13 +398,35 @@ function createMCPServer(): Server {
           };
         }
 
+        case 'navigate_and_read': {
+          // Navigate first
+          await sendToExtension('navigate', { url: (args as any).url, tabId: (args as any).tabId });
+          // Wait for page to load
+          const waitMs = (args as any).waitMs || 1000;
+          await new Promise(resolve => setTimeout(resolve, waitMs));
+          // Then read page
+          const result = await sendToExtension('read_page', { tabId: (args as any).tabId });
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
         case 'screenshot': {
           const result = await sendToExtension('screenshot', args) as { dataUrl: string };
-          // Return as image content
+          // Return as image content with cost warning
           const base64Data = result.dataUrl.replace(/^data:image\/\w+;base64,/, '');
           const mimeType = result.dataUrl.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png';
           return {
             content: [
+              {
+                type: 'text',
+                text: '⚠️ Screenshot used ~1500 tokens. Next time, consider read_page (~400 tokens) unless you need visual verification.',
+              },
               {
                 type: 'image',
                 data: base64Data,

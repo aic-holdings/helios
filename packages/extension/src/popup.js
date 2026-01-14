@@ -9,12 +9,16 @@ function updateUI(status) {
   const labels = {
     connected: 'Connected',
     connecting: 'Connecting...',
+    reconnecting: 'Reconnecting...',
     disconnected: 'Disconnected',
+    failed: 'Connection Failed',
   };
   statusTextEl.textContent = labels[status] || status;
 
-  connectBtn.style.display = status === 'disconnected' ? 'block' : 'none';
-  disconnectBtn.style.display = status === 'connected' ? 'block' : 'none';
+  const showConnect = status === 'disconnected' || status === 'failed';
+  const showDisconnect = status === 'connected' || status === 'connecting' || status === 'reconnecting';
+  connectBtn.style.display = showConnect ? 'block' : 'none';
+  disconnectBtn.style.display = showDisconnect ? 'block' : 'none';
 }
 
 // Get initial status

@@ -37,6 +37,14 @@
       background: #f8d7da;
       color: #721c24;
     }
+    .status.reconnecting {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .status.failed {
+      background: #f8d7da;
+      color: #721c24;
+    }
     .dot {
       width: 8px;
       height: 8px;
@@ -44,7 +52,9 @@
     }
     .connected .dot { background: #28a745; }
     .connecting .dot { background: #ffc107; }
+    .reconnecting .dot { background: #ffc107; }
     .disconnected .dot { background: #dc3545; }
+    .failed .dot { background: #dc3545; }
     button {
       width: 100%;
       padding: 8px 16px;
@@ -87,7 +97,7 @@
   <button id="disconnectBtn" class="secondary">Disconnect</button>
 
   <div class="info">
-    Server: ws://localhost:9333
+    Native Messaging → MCP Server
   </div>
 
   <script src="popup.js"></script>

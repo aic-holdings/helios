@@ -1,0 +1,2 @@
+#!/bin/bash
+exec node "/home/dshanklin/repos/aic-holdings/helios/packages/native-host/dist/index.js" "$@"

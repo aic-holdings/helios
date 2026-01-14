@@ -1,0 +1,22 @@
+{
+  "name": "@helios/native-host",
+  "version": "0.1.0",
+  "description": "Native messaging bridge for Helios browser extension",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "helios-native-host": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.0"
+  }
+}

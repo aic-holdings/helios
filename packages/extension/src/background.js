@@ -1,25 +1,22 @@
 /**
  * Helios - Background Service Worker
  *
- * Connects to MCP server via WebSocket and handles browser automation commands.
+ * Connects to MCP server via Native Messaging host for reliable connections.
+ * Chrome manages the native host lifecycle, solving MV3 service worker issues.
  */
 
+const HOST_NAME = 'com.helios.native';
+
+let port = null;
+let connectionStatus = 'disconnected';
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+
 const CONFIG = {
-  wsHost: 'localhost',
-  wsPort: 9333,
   reconnectBaseDelay: 1000,
   reconnectMaxDelay: 30000,
+  maxReconnectAttempts: 20,
 };
-
-let ws = null;
-let connectionStatus = 'disconnected';
-let reconnectAttempts = 0;
-let reconnectTimer = null;
-
-// Generate unique message ID
-function generateMessageId() {
-  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
 
 // Update connection status and notify popup
 function setConnectionStatus(status) {
@@ -32,49 +29,74 @@ function setConnectionStatus(status) {
   });
 }
 
-// Connect to WebSocket server
+// Connect to native messaging host
 function connect() {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log('[Helios] Already connected');
+  if (port) {
+    console.log('[Helios] Already connected to native host');
     return;
   }
 
   setConnectionStatus('connecting');
-  const url = `ws://${CONFIG.wsHost}:${CONFIG.wsPort}`;
-  console.log(`[Helios] Connecting to ${url}...`);
+  console.log(`[Helios] Connecting to native host: ${HOST_NAME}`);
 
   try {
-    ws = new WebSocket(url);
+    port = chrome.runtime.connectNative(HOST_NAME);
 
-    ws.onopen = () => {
-      console.log('[Helios] Connected to MCP server');
-      setConnectionStatus('connected');
-      reconnectAttempts = 0;
-    };
+    port.onMessage.addListener(async (message) => {
+      console.log('[Helios] Received from native host:', message);
 
-    ws.onmessage = async (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        console.log('[Helios] Received:', message);
-        const response = await handleMessage(message);
-        ws.send(JSON.stringify(response));
-      } catch (error) {
-        console.error('[Helios] Error handling message:', error);
+      // Handle connection status messages from native host
+      if (message.type === 'connected') {
+        console.log('[Helios] Native host connected to MCP server');
+        setConnectionStatus('connected');
+        reconnectAttempts = 0;
+        return;
       }
-    };
 
-    ws.onclose = () => {
-      console.log('[Helios] Connection closed');
+      if (message.type === 'disconnected') {
+        console.log('[Helios] Native host lost connection to MCP server');
+        setConnectionStatus('reconnecting');
+        return;
+      }
+
+      if (message.type === 'error') {
+        console.error('[Helios] Native host error:', message.error);
+        return;
+      }
+
+      // Handle MCP messages from server
+      if (message.id) {
+        try {
+          const response = await handleMessage(message);
+          if (port) {
+            port.postMessage(response);
+          }
+        } catch (error) {
+          console.error('[Helios] Error handling message:', error);
+          if (port) {
+            port.postMessage({
+              id: message.id,
+              success: false,
+              error: error.message,
+            });
+          }
+        }
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      const error = chrome.runtime.lastError;
+      console.log('[Helios] Native host disconnected:', error?.message || 'unknown');
+      port = null;
       setConnectionStatus('disconnected');
-      ws = null;
       scheduleReconnect();
-    };
+    });
 
-    ws.onerror = (error) => {
-      console.error('[Helios] WebSocket error:', error);
-    };
+    // Native host is connected - it will notify us when MCP server connects
+    console.log('[Helios] Native messaging port opened');
   } catch (error) {
-    console.error('[Helios] Failed to create WebSocket:', error);
+    console.error('[Helios] Failed to connect to native host:', error);
+    port = null;
     setConnectionStatus('disconnected');
     scheduleReconnect();
   }
@@ -84,6 +106,12 @@ function connect() {
 function scheduleReconnect() {
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
+  }
+
+  if (reconnectAttempts >= CONFIG.maxReconnectAttempts) {
+    console.log('[Helios] Max reconnect attempts reached');
+    setConnectionStatus('failed');
+    return;
   }
 
   const delay = Math.min(
@@ -335,7 +363,7 @@ async function handleMessage(message) {
       }
 
       case 'screenshot': {
-        const { tabId, format = 'png', quality = 80 } = payload || {};
+        const { tabId, format = 'jpeg', quality = 60 } = payload || {};
         const tab = await getTargetTab(tabId);
 
         // Activate the tab first to ensure we capture the right content
@@ -475,13 +503,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     connect();
     sendResponse({ ok: true });
   } else if (message.type === 'disconnect') {
-    if (ws) {
-      ws.close();
+    if (port) {
+      port.disconnect();
+      port = null;
     }
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
+    setConnectionStatus('disconnected');
     sendResponse({ ok: true });
   }
   return true;
@@ -490,4 +520,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Start connection on service worker load
 connect();
 
-console.log('[Helios] Background service worker started');
+console.log('[Helios] Background service worker started (Native Messaging)');
