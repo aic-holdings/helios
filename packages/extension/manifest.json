@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Meridian Browse",
+  "name": "Helios",
   "version": "0.1.0",
   "description": "Intelligent browser automation for AI - control your actual browser tabs",
   "permissions": [

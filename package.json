@@ -1,5 +1,5 @@
 {
-  "name": "meridian-browse",
+  "name": "helios",
   "version": "0.1.0",
   "private": true,
   "description": "Intelligent browser automation for AI",
@@ -9,7 +9,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
-    "server": "pnpm --filter @meridian/server start",
+    "server": "pnpm --filter @helios/server start",
     "clean": "pnpm -r clean"
   },
   "devDependencies": {

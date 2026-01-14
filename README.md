@@ -1,4 +1,4 @@
-# Meridian Browse
+# Helios
 
 Intelligent browser automation for AI. Control your actual logged-in browser tabs with token-efficient structured DOM representation.
 
@@ -49,9 +49,9 @@ Add to your Claude Code MCP settings:
 ```json
 {
   "mcpServers": {
-    "meridian-browse": {
+    "helios": {
       "command": "node",
-      "args": ["/path/to/meridian-browse/packages/server/dist/index.js"]
+      "args": ["/path/to/helios/packages/server/dist/index.js"]
     }
   }
 }
@@ -67,7 +67,7 @@ In Claude Code, try:
 
 ```bash
 # Watch mode for server
-pnpm --filter @meridian/server dev
+pnpm --filter @helios/server dev
 
 # Build everything
 pnpm build
@@ -76,7 +76,7 @@ pnpm build
 ## Project Structure
 
 ```
-meridian-browse/
+helios/
 ├── packages/
 │   ├── extension/     # Chrome extension (Manifest V3)
 │   │   ├── manifest.json

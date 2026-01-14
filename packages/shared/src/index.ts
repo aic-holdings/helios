@@ -1,23 +1,23 @@
 /**
- * Meridian Browse - Shared Protocol
+ * Helios - Shared Protocol
  *
  * Message types for communication between MCP Server and Chrome Extension
  */
 
 // Base message structure
-export interface MeridianMessage {
+export interface HeliosMessage {
   id: string;
   type: string;
   payload?: unknown;
 }
 
 // Request from server to extension
-export interface MeridianRequest extends MeridianMessage {
+export interface HeliosRequest extends HeliosMessage {
   type: 'ping' | 'tabs_list' | 'navigate' | 'page_read' | 'click' | 'type' | 'screenshot';
 }
 
 // Response from extension to server
-export interface MeridianResponse extends MeridianMessage {
+export interface HeliosResponse extends HeliosMessage {
   success: boolean;
   data?: unknown;
   error?: string;
@@ -25,11 +25,11 @@ export interface MeridianResponse extends MeridianMessage {
 
 // Specific message types
 
-export interface PingRequest extends MeridianRequest {
+export interface PingRequest extends HeliosRequest {
   type: 'ping';
 }
 
-export interface PingResponse extends MeridianResponse {
+export interface PingResponse extends HeliosResponse {
   data: {
     pong: true;
     extensionVersion: string;
@@ -45,11 +45,11 @@ export interface TabInfo {
   groupId?: number;
 }
 
-export interface TabsListRequest extends MeridianRequest {
+export interface TabsListRequest extends HeliosRequest {
   type: 'tabs_list';
 }
 
-export interface TabsListResponse extends MeridianResponse {
+export interface TabsListResponse extends HeliosResponse {
   data: {
     tabs: TabInfo[];
   };

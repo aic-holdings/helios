@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Meridian Browse - MCP Server
+ * Helios - MCP Server
  *
  * Bridges Claude (via MCP) to Chrome extension (via WebSocket)
  */
@@ -35,7 +35,7 @@ function generateMessageId(): string {
 async function sendToExtension(type: string, payload?: unknown): Promise<unknown> {
   if (!extensionSocket || extensionSocket.readyState !== WebSocket.OPEN) {
     throw new Error(
-      'Browser extension not connected. Please ensure the Meridian Browse extension is installed and connected.'
+      'Browser extension not connected. Please ensure the Helios extension is installed and connected.'
     );
   }
 
@@ -57,10 +57,10 @@ async function sendToExtension(type: string, payload?: unknown): Promise<unknown
 function createWebSocketServer(): WebSocketServer {
   const wss = new WebSocketServer({ port: CONFIG.wsPort });
 
-  console.error(`[Meridian] WebSocket server listening on port ${CONFIG.wsPort}`);
+  console.error(`[Helios] WebSocket server listening on port ${CONFIG.wsPort}`);
 
   wss.on('connection', (socket) => {
-    console.error('[Meridian] Extension connected');
+    console.error('[Helios] Extension connected');
 
     // Close any existing connection
     if (extensionSocket && extensionSocket.readyState === WebSocket.OPEN) {
@@ -86,19 +86,19 @@ function createWebSocketServer(): WebSocketServer {
           }
         }
       } catch (error) {
-        console.error('[Meridian] Error parsing message:', error);
+        console.error('[Helios] Error parsing message:', error);
       }
     });
 
     socket.on('close', () => {
-      console.error('[Meridian] Extension disconnected');
+      console.error('[Helios] Extension disconnected');
       if (extensionSocket === socket) {
         extensionSocket = null;
       }
     });
 
     socket.on('error', (error) => {
-      console.error('[Meridian] Socket error:', error);
+      console.error('[Helios] Socket error:', error);
     });
   });
 
@@ -108,7 +108,7 @@ function createWebSocketServer(): WebSocketServer {
 // Create MCP server
 function createMCPServer(): Server {
   const server = new Server(
-    { name: 'meridian-browse', version: '0.1.0' },
+    { name: 'helios', version: '0.1.0' },
     { capabilities: { tools: {} } }
   );
 
@@ -447,19 +447,19 @@ async function main() {
   const server = createMCPServer();
   const transport = new StdioServerTransport();
 
-  console.error('[Meridian] Starting MCP server...');
+  console.error('[Helios] Starting MCP server...');
 
   await server.connect(transport);
 
   // Handle shutdown
   process.on('SIGINT', () => {
-    console.error('[Meridian] Shutting down...');
+    console.error('[Helios] Shutting down...');
     wss.close();
     process.exit(0);
   });
 }
 
 main().catch((error) => {
-  console.error('[Meridian] Fatal error:', error);
+  console.error('[Helios] Fatal error:', error);
   process.exit(1);
 });

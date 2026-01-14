@@ -1,5 +1,5 @@
 /**
- * Meridian Browse - Background Service Worker
+ * Helios - Background Service Worker
  *
  * Connects to MCP server via WebSocket and handles browser automation commands.
  */
@@ -24,7 +24,7 @@ function generateMessageId() {
 // Update connection status and notify popup
 function setConnectionStatus(status) {
   connectionStatus = status;
-  console.log(`[Meridian] Connection status: ${status}`);
+  console.log(`[Helios] Connection status: ${status}`);
 
   // Notify popup if open
   chrome.runtime.sendMessage({ type: 'status', status }).catch(() => {
@@ -35,19 +35,19 @@ function setConnectionStatus(status) {
 // Connect to WebSocket server
 function connect() {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    console.log('[Meridian] Already connected');
+    console.log('[Helios] Already connected');
     return;
   }
 
   setConnectionStatus('connecting');
   const url = `ws://${CONFIG.wsHost}:${CONFIG.wsPort}`;
-  console.log(`[Meridian] Connecting to ${url}...`);
+  console.log(`[Helios] Connecting to ${url}...`);
 
   try {
     ws = new WebSocket(url);
 
     ws.onopen = () => {
-      console.log('[Meridian] Connected to MCP server');
+      console.log('[Helios] Connected to MCP server');
       setConnectionStatus('connected');
       reconnectAttempts = 0;
     };
@@ -55,26 +55,26 @@ function connect() {
     ws.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
-        console.log('[Meridian] Received:', message);
+        console.log('[Helios] Received:', message);
         const response = await handleMessage(message);
         ws.send(JSON.stringify(response));
       } catch (error) {
-        console.error('[Meridian] Error handling message:', error);
+        console.error('[Helios] Error handling message:', error);
       }
     };
 
     ws.onclose = () => {
-      console.log('[Meridian] Connection closed');
+      console.log('[Helios] Connection closed');
       setConnectionStatus('disconnected');
       ws = null;
       scheduleReconnect();
     };
 
     ws.onerror = (error) => {
-      console.error('[Meridian] WebSocket error:', error);
+      console.error('[Helios] WebSocket error:', error);
     };
   } catch (error) {
-    console.error('[Meridian] Failed to create WebSocket:', error);
+    console.error('[Helios] Failed to create WebSocket:', error);
     setConnectionStatus('disconnected');
     scheduleReconnect();
   }
@@ -91,7 +91,7 @@ function scheduleReconnect() {
     CONFIG.reconnectMaxDelay
   );
 
-  console.log(`[Meridian] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1})`);
+  console.log(`[Helios] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1})`);
 
   reconnectTimer = setTimeout(() => {
     reconnectAttempts++;
@@ -364,13 +364,13 @@ async function handleMessage(message) {
 
         const result = await executeInTab(tab.id, (shouldClear, filterLevel, maxLogs) => {
           // Inject console interceptor if not present
-          if (!window.__meridianConsoleLogs) {
-            window.__meridianConsoleLogs = [];
+          if (!window.__heliosConsoleLogs) {
+            window.__heliosConsoleLogs = [];
             const originalConsole = {};
             ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
               originalConsole[method] = console[method];
               console[method] = function(...args) {
-                window.__meridianConsoleLogs.push({
+                window.__heliosConsoleLogs.push({
                   level: method,
                   timestamp: Date.now(),
                   args: args.map(arg => {
@@ -385,16 +385,16 @@ async function handleMessage(message) {
                   }),
                 });
                 // Keep only last 500 logs
-                if (window.__meridianConsoleLogs.length > 500) {
-                  window.__meridianConsoleLogs.shift();
+                if (window.__heliosConsoleLogs.length > 500) {
+                  window.__heliosConsoleLogs.shift();
                 }
                 originalConsole[method].apply(console, args);
               };
             });
-            window.__meridianOriginalConsole = originalConsole;
+            window.__heliosOriginalConsole = originalConsole;
           }
 
-          let logs = window.__meridianConsoleLogs;
+          let logs = window.__heliosConsoleLogs;
 
           // Filter by level
           if (filterLevel !== 'all') {
@@ -406,12 +406,12 @@ async function handleMessage(message) {
 
           // Clear if requested
           if (shouldClear) {
-            window.__meridianConsoleLogs = [];
+            window.__heliosConsoleLogs = [];
           }
 
           return {
             logs,
-            total: window.__meridianConsoleLogs.length,
+            total: window.__heliosConsoleLogs.length,
             interceptorActive: true,
           };
         }, [clear, level, limit]);
@@ -490,4 +490,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Start connection on service worker load
 connect();
 
-console.log('[Meridian] Background service worker started');
+console.log('[Helios] Background service worker started');

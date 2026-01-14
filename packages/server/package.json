@@ -1,10 +1,10 @@
 {
-  "name": "@meridian/server",
+  "name": "@helios/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "meridian-server": "./dist/index.js"
+    "helios-server": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "scripts": {
