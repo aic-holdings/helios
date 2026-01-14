@@ -249,6 +249,51 @@ function createMCPServer(): Server {
             required: [],
           },
         },
+        {
+          name: 'console_logs',
+          description: 'Read console logs from the page. Injects a log interceptor if not already present. Essential for debugging.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+              clear: {
+                type: 'boolean',
+                description: 'Clear logs after reading (default: false)',
+              },
+              level: {
+                type: 'string',
+                enum: ['all', 'log', 'warn', 'error', 'info', 'debug'],
+                description: 'Filter by log level (default: all)',
+              },
+              limit: {
+                type: 'number',
+                description: 'Max number of logs to return (default: 100)',
+              },
+            },
+            required: [],
+          },
+        },
+        {
+          name: 'evaluate',
+          description: 'Execute JavaScript code in the page context. Returns the result. Use for custom automation or debugging.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tabId: {
+                type: 'number',
+                description: 'Tab ID. If not provided, uses active tab.',
+              },
+              code: {
+                type: 'string',
+                description: 'JavaScript code to execute',
+              },
+            },
+            required: ['code'],
+          },
+        },
       ],
     };
   });
@@ -342,6 +387,30 @@ function createMCPServer(): Server {
                 type: 'image',
                 data: base64Data,
                 mimeType,
+              },
+            ],
+          };
+        }
+
+        case 'console_logs': {
+          const result = await sendToExtension('console_logs', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'evaluate': {
+          const result = await sendToExtension('evaluate', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
               },
             ],
           };

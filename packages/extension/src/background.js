@@ -358,6 +358,99 @@ async function handleMessage(message) {
         };
       }
 
+      case 'console_logs': {
+        const { tabId, clear = false, level = 'all', limit = 100 } = payload || {};
+        const tab = await getTargetTab(tabId);
+
+        const result = await executeInTab(tab.id, (shouldClear, filterLevel, maxLogs) => {
+          // Inject console interceptor if not present
+          if (!window.__meridianConsoleLogs) {
+            window.__meridianConsoleLogs = [];
+            const originalConsole = {};
+            ['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
+              originalConsole[method] = console[method];
+              console[method] = function(...args) {
+                window.__meridianConsoleLogs.push({
+                  level: method,
+                  timestamp: Date.now(),
+                  args: args.map(arg => {
+                    try {
+                      if (arg instanceof Error) {
+                        return { type: 'error', message: arg.message, stack: arg.stack };
+                      }
+                      return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+                    } catch (e) {
+                      return String(arg);
+                    }
+                  }),
+                });
+                // Keep only last 500 logs
+                if (window.__meridianConsoleLogs.length > 500) {
+                  window.__meridianConsoleLogs.shift();
+                }
+                originalConsole[method].apply(console, args);
+              };
+            });
+            window.__meridianOriginalConsole = originalConsole;
+          }
+
+          let logs = window.__meridianConsoleLogs;
+
+          // Filter by level
+          if (filterLevel !== 'all') {
+            logs = logs.filter(l => l.level === filterLevel);
+          }
+
+          // Limit
+          logs = logs.slice(-maxLogs);
+
+          // Clear if requested
+          if (shouldClear) {
+            window.__meridianConsoleLogs = [];
+          }
+
+          return {
+            logs,
+            total: window.__meridianConsoleLogs.length,
+            interceptorActive: true,
+          };
+        }, [clear, level, limit]);
+
+        return { id, success: true, data: result };
+      }
+
+      case 'evaluate': {
+        const { tabId, code } = payload || {};
+        if (!code) {
+          throw new Error('code is required');
+        }
+        const tab = await getTargetTab(tabId);
+
+        const result = await executeInTab(tab.id, (jsCode) => {
+          try {
+            // Use indirect eval for global scope
+            const result = (0, eval)(jsCode);
+            // Try to serialize the result
+            if (result === undefined) return { value: undefined, type: 'undefined' };
+            if (result === null) return { value: null, type: 'null' };
+            if (typeof result === 'function') return { value: '[Function]', type: 'function' };
+            if (typeof result === 'symbol') return { value: result.toString(), type: 'symbol' };
+            try {
+              return { value: JSON.parse(JSON.stringify(result)), type: typeof result };
+            } catch {
+              return { value: String(result), type: typeof result };
+            }
+          } catch (e) {
+            return { error: e.message, stack: e.stack };
+          }
+        }, [code]);
+
+        if (result?.error) {
+          throw new Error(result.error);
+        }
+        return { id, success: true, data: result };
+      }
+
       default:
         return {
           id,
