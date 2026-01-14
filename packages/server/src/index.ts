@@ -491,6 +491,38 @@ function createMCPServer(): Server {
             required: [],
           },
         },
+        {
+          name: 'download',
+          description: 'Trigger a file download. Returns download ID for tracking. If download doesn\'t start, user may need to disable "Ask where to save" in Chrome settings.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              url: {
+                type: 'string',
+                description: 'URL to download',
+              },
+              filename: {
+                type: 'string',
+                description: 'Suggested filename (optional)',
+              },
+            },
+            required: ['url'],
+          },
+        },
+        {
+          name: 'download_status',
+          description: 'Check download status. Without downloadId, lists recent downloads. Returns filename (full path), state (in_progress/complete/interrupted), and progress.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              downloadId: {
+                type: 'number',
+                description: 'Specific download ID to check. If omitted, lists recent downloads.',
+              },
+            },
+            required: [],
+          },
+        },
       ],
     };
   });
@@ -733,6 +765,30 @@ function createMCPServer(): Server {
 
         case 'refresh': {
           const result = await sendToExtension('refresh', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'download': {
+          const result = await sendToExtension('download', args);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+
+        case 'download_status': {
+          const result = await sendToExtension('download_status', args);
           return {
             content: [
               {

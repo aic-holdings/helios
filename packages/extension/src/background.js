@@ -726,6 +726,65 @@ async function handleMessage(message) {
         };
       }
 
+      case 'download': {
+        const { url, filename } = payload || {};
+        if (!url) {
+          throw new Error('url is required');
+        }
+        const downloadId = await chrome.downloads.download({
+          url,
+          filename, // Optional suggested filename
+          saveAs: false, // Don't prompt - use default location
+        });
+        return {
+          id,
+          success: true,
+          data: { downloadId, url, filename },
+        };
+      }
+
+      case 'download_status': {
+        const { downloadId } = payload || {};
+        if (downloadId === undefined) {
+          // List recent downloads
+          const downloads = await chrome.downloads.search({ limit: 10, orderBy: ['-startTime'] });
+          return {
+            id,
+            success: true,
+            data: {
+              downloads: downloads.map(d => ({
+                id: d.id,
+                filename: d.filename,
+                url: d.url,
+                state: d.state, // in_progress, interrupted, complete
+                bytesReceived: d.bytesReceived,
+                totalBytes: d.totalBytes,
+                error: d.error,
+              })),
+            },
+          };
+        } else {
+          // Get specific download
+          const [download] = await chrome.downloads.search({ id: downloadId });
+          if (!download) {
+            throw new Error(`Download ${downloadId} not found`);
+          }
+          return {
+            id,
+            success: true,
+            data: {
+              id: download.id,
+              filename: download.filename,
+              url: download.url,
+              state: download.state,
+              bytesReceived: download.bytesReceived,
+              totalBytes: download.totalBytes,
+              error: download.error,
+            },
+          };
+        }
+      }
+
       default:
         return {
           id,
